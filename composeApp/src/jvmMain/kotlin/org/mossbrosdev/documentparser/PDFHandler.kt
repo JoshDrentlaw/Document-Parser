@@ -5,7 +5,6 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openFilePicker
-import technology.tabula.Table
 
 class PDFHandler {
     suspend fun openFilePicker() : String? {
@@ -17,7 +16,7 @@ class PDFHandler {
         return file?.absolutePath()
     }
 
-    fun processPDF(pdfFilePath: String) : DocumentData {
+    fun processPDF(pdfFilePath: String) : ParsedDocument {
         val tableExtractor = TableExtractor()
         val tables = tableExtractor.extractTables(pdfFilePath)
 
