@@ -1,17 +1,19 @@
 package org.mossbrosdev.documentparser
 
+import io.github.vinceglb.filekit.PlatformFile
 import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ComposeAppDesktopTest {
+class TableExtractorTest {
 
     @Test
     fun `extractTables can find a single table in a PDF`() {
         val pdfHandler = PDFHandler()
         val filePath = Paths.get("src", "jvmTest", "resources", "one-table.pdf").toAbsolutePath().toString()
-        val document = pdfHandler.processPDF(filePath)
+        pdfHandler.loadDocument(PlatformFile(filePath))
+        val document = pdfHandler.processPDF()
         assertTrue(document.pages.isNotEmpty(), "No pages were extracted from the PDF.")
 
         val page = document.pages.first()
@@ -36,7 +38,8 @@ class ComposeAppDesktopTest {
     fun `extractTables can find multiple tables in a PDF`() {
         val pdfHandler = PDFHandler()
         val filePath = Paths.get("src", "jvmTest", "resources", "multiple-tables.pdf").toAbsolutePath().toString()
-        val document = pdfHandler.processPDF(filePath)
+        pdfHandler.loadDocument(PlatformFile(filePath))
+        val document = pdfHandler.processPDF()
         assertTrue(document.pages.isNotEmpty(), "No pages were extracted from the PDF.")
         assertEquals(2, document.pages.size, "Expected 2 pages, but found ${document.pages.size}.")
 
@@ -53,7 +56,8 @@ class ComposeAppDesktopTest {
     fun `extractTables handles no tables in a PDF`() {
         val pdfHandler = PDFHandler()
         val filePath = Paths.get("src", "jvmTest", "resources", "no-tables.pdf").toAbsolutePath().toString()
-        val document = pdfHandler.processPDF(filePath)
+        pdfHandler.loadDocument(PlatformFile(filePath))
+        val document = pdfHandler.processPDF()
         assertEquals(1, document.pages.size, "Expected 1 page, but found ${document.pages.size}.")
 
         val page = document.pages.first()
@@ -64,7 +68,8 @@ class ComposeAppDesktopTest {
     fun `extractTables handles IO exceptions`() {
         val pdfHandler = PDFHandler()
         val filePath = Paths.get("src", "jvmTest", "resources", "non-existent-file.pdf").toAbsolutePath().toString()
-        val document = pdfHandler.processPDF(filePath)
+        pdfHandler.loadDocument(PlatformFile(filePath))
+        val document = pdfHandler.processPDF()
         assertEquals(0, document.pages.size, "Expected 0 pages, but found ${document.pages.size}.")
     }
 }

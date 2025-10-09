@@ -1,25 +1,18 @@
 package org.mossbrosdev.documentparser
 
-import org.apache.pdfbox.Loader
+import org.apache.pdfbox.pdmodel.PDDocument
 import technology.tabula.ObjectExtractor
 import technology.tabula.extractors.SpreadsheetExtractionAlgorithm
-import java.io.File
-import java.io.IOException
 
 data class ExtractedTable(var rows: MutableList<MutableList<String>>)
 data class ParsedPage(val pageNumber: Int, val tables: MutableList<ExtractedTable>)
 data class ParsedDocument(val pages: MutableList<ParsedPage>)
 
-class TableExtractor {
-    fun extractTables(filePath: String): ParsedDocument {
-        val pdfFile = File(filePath)
-        val document = try {
-            Loader.loadPDF(pdfFile)
-        } catch (e: IOException) {
-            println(e.message.toString())
-            return ParsedDocument(mutableListOf())
-        }
-        val extractor = ObjectExtractor(document)
+class TableExtractor(
+    val pdfDocument: PDDocument? = null,
+) {
+    fun extractTables(): ParsedDocument {
+        val extractor = ObjectExtractor(pdfDocument)
         val spreadsheetExtractor = SpreadsheetExtractionAlgorithm()
         val parsedDocument = ParsedDocument(mutableListOf())
 

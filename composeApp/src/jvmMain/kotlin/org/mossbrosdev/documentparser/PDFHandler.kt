@@ -1,25 +1,40 @@
 package org.mossbrosdev.documentparser
 
-import io.github.vinceglb.filekit.FileKit
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
+import org.apache.pdfbox.Loader
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.rendering.PDFRenderer
 
 class PDFHandler {
-    suspend fun openFilePicker() : String? {
-        val file = FileKit.openFilePicker(
-            type = FileKitType.File("pdf"),
-            directory = PlatformFile(System.getProperty("user.dir")),
-        )
+    protected var pdfDocument: PDDocument? = null
 
-        return file?.absolutePath()
+    fun loadDocument(pdfFile: PlatformFile) {
+        val javaFile = java.io.File(pdfFile.absolutePath())
+        pdfDocument = try {
+            Loader.loadPDF(javaFile)
+        } catch (e: java.io.IOException) {
+            println(e.message.toString())
+            null
+        }
     }
 
-    fun processPDF(pdfFilePath: String) : ParsedDocument {
-        val tableExtractor = TableExtractor()
-        val tables = tableExtractor.extractTables(pdfFilePath)
+    fun renderPDFToImage(): ImageBitmap {
+        val renderer = PDFRenderer(pdfDocument)
+        val image = renderer.renderImageWithDPI(0, 150f)
+        return image.toComposeImageBitmap()
+    }
 
-        return tables
+    fun processPDF() : ParsedDocument {
+        pdfDocument?.let {
+            val tableExtractor = TableExtractor(pdfDocument)
+            val document = tableExtractor.extractTables()
+
+            return document
+        }
+
+        return ParsedDocument(mutableListOf())
     }
 }
