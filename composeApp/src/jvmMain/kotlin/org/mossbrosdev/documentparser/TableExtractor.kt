@@ -1,34 +1,37 @@
 package org.mossbrosdev.documentparser
 
-import org.apache.pdfbox.pdmodel.PDDocument
-import technology.tabula.ObjectExtractor
-import technology.tabula.extractors.SpreadsheetExtractionAlgorithm
+import technology.tabula.TableWithRulingLines
+import java.awt.geom.Rectangle2D
 
-data class ExtractedTable(var rows: MutableList<MutableList<String>>)
-data class ParsedPage(val pageNumber: Int, val tables: MutableList<ExtractedTable>)
-data class ParsedDocument(val pages: MutableList<ParsedPage>)
 
 class TableExtractor(
-    val pdfDocument: PDDocument? = null,
+    private val scale: Float = 1.0f,
+    private val regions: MutableList<TableWithRulingLines>
 ) {
-    fun extractTables(): ParsedDocument {
-        val extractor = ObjectExtractor(pdfDocument)
-        val spreadsheetExtractor = SpreadsheetExtractionAlgorithm()
-        val parsedDocument = ParsedDocument(mutableListOf())
-
-        extractor.extract().forEach { page ->
-            val tables = spreadsheetExtractor.extract(page)
-            val parsedPage = ParsedPage(page.pageNumber, mutableListOf())
-            tables.forEach { table ->
-                val rows = table.rows.map { row ->
-                    row.map { cell -> cell.text }.toMutableList()
+    fun extract() : MutableList<DetectedTable> {
+        val extractedRegions = mutableListOf<DetectedTable>()
+        for (region in regions) {
+            val tableData = region.rows
+                .map { row ->
+                    row.map { column ->
+                        column.text.trim()
+                    }.toMutableList()
                 }.toMutableList()
-                val extractedTable = ExtractedTable(rows)
-                parsedPage.tables.add(extractedTable)
-            }
-            parsedDocument.pages.add(parsedPage)
+            val detectedTable = DetectedTable(
+                coordinates = createCoordinates(region),
+                data = tableData
+            )
+            extractedRegions.add(detectedTable)
         }
 
-        return parsedDocument
+        return extractedRegions
+    }
+    private fun createCoordinates(rect: Rectangle2D.Float): Coordinates {
+        return Coordinates(
+            rect.x * scale,
+            rect.y * scale,
+            rect.width * scale,
+            rect.height * scale
+        )
     }
 }

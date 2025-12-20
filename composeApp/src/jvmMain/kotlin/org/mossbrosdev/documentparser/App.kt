@@ -2,19 +2,21 @@ package org.mossbrosdev.documentparser
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -27,21 +29,22 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
-    val pdfHandler = PDFHandler()
-    val scope = rememberCoroutineScope()
-    var renderedImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    var parsedDocument by remember { mutableStateOf(ParsedDocument()) }
     val launcher = rememberFilePickerLauncher(
         type = FileKitType.File("pdf"),
         directory = PlatformFile(System.getProperty("user.dir")),
         title = "Select PDF file",
     ) { file ->
         file?.let {
-            pdfHandler.loadDocument(file)
-            renderedImage = pdfHandler.renderPDFToImage()
+            val pdfHandler = PDFHandler(file)
+            pdfHandler.process()
+            parsedDocument = pdfHandler.getParsedDocument()
         }
     }
 
     MaterialTheme {
+        // Interaction states
+        var scale by remember { mutableStateOf(1f) }
 
         Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(
@@ -71,35 +74,69 @@ fun App() {
                     }
                 }
 
-                // Interaction states
-                var scale by remember { mutableStateOf(0.5f) }
-                var offset by remember { mutableStateOf(Offset.Zero) }
-                Canvas(
+                val maxWidth = parsedDocument.pages.maxOfOrNull { (it.image?.width ?: 0) * scale } ?: 0.0
+                val height = parsedDocument.pages.sumOf { it.image?.height ?: 0 } * scale
+
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(0.5f, 5f)
-                                offset += pan
-                            }
+                        .padding(5.dp)
+                        .drawBehind {
+                            drawRect(
+                                color = Color.Black,
+                                size = Size(size.width, size.height),
+                                topLeft = Offset.Zero,
+                                style = Stroke(width = 5.dp.toPx())
+                            )
                         }
-                        .border(5.dp, MaterialTheme.colorScheme.onSecondaryContainer)
-                        .clip(MaterialTheme.shapes.medium),
+                        .width(maxWidth.toFloat().dp)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    renderedImage?.let { img ->
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(height.dp)
+                            .pointerInput(Unit) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    scale *= zoom
+//                                offset += pan
+                                }
+                            },
+                    ) {
                         val canvasWidth = size.width
                         val canvasHeight = size.height
-                        val imgWidth = img.width * scale
-                        val imgHeight = img.height * scale
+                        parsedDocument.pages.forEachIndexed { index, page ->
+                            page.image?.let { img ->
+                                val imgWidth = img.width * scale
+                                val imgHeight = img.height * scale
+                                val yOffset = ((canvasHeight - imgHeight) * index)
 
-                        drawImage(
-                            image = img,
-                            dstSize = Size(imgWidth, imgHeight).toIntSize(),
-                            dstOffset = IntOffset(
-                                x = ((canvasWidth - imgWidth) / 2 + offset.x).toInt(),
-                                y = ((canvasHeight - imgHeight) / 2 + offset.y).toInt(),
-                            )
-                        )
+                                // The next version of CMP will support float values for size and offset
+                                drawImage(
+                                    image = img,
+                                    dstSize = Size(imgWidth, imgHeight).toIntSize(),
+                                    dstOffset = IntOffset(
+                                        x = (canvasWidth - imgWidth).toInt(),
+                                        y = yOffset.toInt(),
+                                    )
+                                )
+
+                                page.tables.forEachIndexed { index, table ->
+                                    drawRect(
+                                        style = Stroke(width = 1f),
+                                        color = Color.Red,
+                                        size = Size(
+                                            width = (table.coordinates.width),
+                                            height = (table.coordinates.height)
+                                        ),
+                                        topLeft = Offset(
+                                            x = (table.coordinates.x),
+                                            y = (table.coordinates.y) + yOffset,
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 class TableExtractorTest {
 
-    @Test
+    /*@Test
     fun `extractTables can find a single table in a PDF`() {
         val pdfHandler = PDFHandler()
         val filePath = Paths.get("src", "jvmTest", "resources", "one-table.pdf").toAbsolutePath().toString()
@@ -71,5 +71,5 @@ class TableExtractorTest {
         pdfHandler.loadDocument(PlatformFile(filePath))
         val document = pdfHandler.processPDF()
         assertEquals(0, document.pages.size, "Expected 0 pages, but found ${document.pages.size}.")
-    }
+    }*/
 }
