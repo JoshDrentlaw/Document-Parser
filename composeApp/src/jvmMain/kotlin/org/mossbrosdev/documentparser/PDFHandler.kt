@@ -6,41 +6,47 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.rendering.PDFRenderer
+import org.mossbrosdev.documentparser.pdf.extraction.ExtractedPage
+import org.mossbrosdev.documentparser.pdf.extraction.ExtractedDocument
+import org.mossbrosdev.documentparser.pdf.extraction.TableRegion
+import org.mossbrosdev.documentparser.pdf.ports.TableExtractor
 import technology.tabula.ObjectExtractor
 import technology.tabula.Page
 import technology.tabula.TableWithRulingLines
 import technology.tabula.extractors.SpreadsheetExtractionAlgorithm
+import java.util.UUID
+import kotlin.uuid.Uuid
 
 class PDFHandler(
     val pdfFile: PlatformFile
 ) {
     private val DPI: Float = 150f
     private val PIXELS_PER_PT: Float = DPI / 72f
-    private var parsedDocument: ParsedDocument = ParsedDocument()
+    private var extractedDocument: ExtractedDocument = ExtractedDocument()
     private var imageRenderer: PDFRenderer? = null
 
-    fun getParsedDocument(): ParsedDocument = parsedDocument
+    fun getParsedDocument(): ExtractedDocument = extractedDocument
 
     fun process() {
         // Load the PDF document
         loadDocument()
-        if (parsedDocument.pdDocument == null) return
-        if (parsedDocument.pdDocument!!.isEncrypted) return
-        imageRenderer = PDFRenderer(parsedDocument.pdDocument)
+        if (extractedDocument.pdDocument == null) return
+        if (extractedDocument.pdDocument!!.isEncrypted) return
+        imageRenderer = PDFRenderer(extractedDocument.pdDocument)
 
         // Extract pages
         extractPages()
 
         // Find tables using tabula-java
-        parsedDocument.pages.forEachIndexed { i, page ->
+        extractedDocument.pages.forEachIndexed { i, page ->
             val tables = extractTablesFromPage(page.page)
-            parsedDocument.pages[i].tables.addAll(tables)
+            extractedDocument.pages[i].tables.addAll(tables)
         }
     }
 
     fun loadDocument() {
         val javaFile = java.io.File(pdfFile.absolutePath())
-        parsedDocument.pdDocument = try {
+        extractedDocument.pdDocument = try {
             Loader.loadPDF(javaFile)
         } catch (e: java.io.IOException) {
             println(e.message.toString())
@@ -49,15 +55,15 @@ class PDFHandler(
     }
 
     fun extractPages() {
-        val extractor = ObjectExtractor(parsedDocument.pdDocument)
+        val extractor = ObjectExtractor(extractedDocument.pdDocument)
         extractor.extract().forEach { page ->
             val image = renderPageToImage(page.pageNumber - 1)
-            val parsedPage = ParsedPage(page, image = image)
-            parsedDocument.pages.add(parsedPage)
+            val extractedPage = ExtractedPage(UUID.randomUUID().toString(), page, image = image)
+            extractedDocument.pages.add(extractedPage)
         }
     }
 
-    fun extractTablesFromPage(page: Page): MutableList<DetectedTable> {
+    fun extractTablesFromPage(page: Page): MutableList<TableRegion> {
         val tableRegions: MutableList<TableWithRulingLines> = SpreadsheetExtractionAlgorithm().extract(page).filterIsInstance<TableWithRulingLines>().toMutableList()
         if (tableRegions.isEmpty()) return mutableListOf()
 
